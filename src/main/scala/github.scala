@@ -1,17 +1,16 @@
 package conscript
 
 import dispatch._
+import Defaults._
 import net.liftweb.json.JsonAST._
-import java.io.File
 import com.ning.http.client.{RequestBuilder=>Req}
 import com.ning.http.client.ProxyServer
 
 object Github extends Credentials {
-  import Conscript.http
   val DefaultBranch = "master"
 
   def lookup(user: String, repo: String, branch: Option[String])
-  : Promise[Either[String, Iterable[(String, Launchconfig)]]] = {
+  : Future[Either[String, Iterable[(String, Launchconfig)]]] = {
     def base = gh(user, repo)
     for {
       ref <- refname(branch, base)
@@ -20,8 +19,9 @@ object Github extends Credentials {
       lc <- blob(base, hash).right
     } yield (name, Launchconfig(lc))
   }
+
   def shas(base: Req, ref: String) =
-    http(
+    Http(
       base / "git" / "refs" / "heads" / ref OK LiftJson.As
     ).either.right.map { js =>
       for {
@@ -32,25 +32,29 @@ object Github extends Credentials {
       case StatusCode(404) => "Repository not found on github"
       case e => unknownError(e)
     }
+
   def trees(base: Req, sha: String) =
-    http(base / "git" / "trees" / sha <<? Map(
+    Http(base / "git" / "trees" / sha <<? Map(
       "recursive" -> "1"
     ) OK LiftJson.As).either.left.map(unknownError).map { eth =>
       eth.right.flatMap { js =>
-        (for {
+        val scripts:List[(String, String)] = for {
           JField("tree", JArray(ary)) <- js
           JObject(obj) <- ary
           JField("path", JString(name)) <- obj
           JField("sha", JString(hash)) <- obj
           name <- Script.findFirstMatchIn(name)
-        } yield (name.group(1), hash)) match {
-          case Seq() => Left("No conscripts found in this repository")
-          case seq => Right(seq)
+        } yield (name.group(1), hash)
+        scripts match {
+          case Nil => Left("No conscripts found in this repository")
+          case xs => Right(xs)
         }
       }
     }
+
   def guaranteed[L, R](value: R) =
-    Promise((Right(value): Either[L, R]))
+    Future((Right(value): Either[L, R]))
+
   def refname(given: Option[String], base: Req) =
     given match {
         case Some(branch) => guaranteed[String, String](branch).right
@@ -58,26 +62,30 @@ object Github extends Credentials {
           case _ => guaranteed[String, String](DefaultBranch)
         }.right
       }
+
   def masterBranch(base: Req) =
-    http(base OK LiftJson.As).either.left.map {
+    Http(base OK LiftJson.As).either.left.map {
       case StatusCode(404) => "Repository not found on github"
       case e => unknownError(e)
     }.map { eth =>
       eth.right.flatMap { js =>
-        (for{
+        val masterBranches: List[String] = for {
           JObject(obj) <- js
           JField("master_branch", JString(branch)) <- obj
-        } yield branch) match {
-          case Seq() => Left("Default master branch not found on github")
-          case seq => Right(seq.head)
+        } yield branch
+        masterBranches match {
+          case Nil => Left("Default master branch not found on github")
+          case head :: _ => Right(head)
         }
       }
     }
+
   def blob(base: Req, hash: String) = {
-      http((base / "git" / "blobs" / hash).addHeader(
+      Http((base / "git" / "blobs" / hash).addHeader(
         "Accept", "application/vnd.github.raw"
-      ) OK As.string).either.left.map(unknownError)
+      ) OK as.String).either.left.map(unknownError)
   }
+
   def gh(user: String, repo: String) : Req = {
     val req = withCredentials(:/("api.github.com").secure / "repos" / user / repo)
 

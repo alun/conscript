@@ -2,6 +2,7 @@ package conscript
 
 import scala.util.control.Exception.{catching,allCatch}
 import java.io.File
+import language.postfixOps
 
 object Apply extends Launch {
 

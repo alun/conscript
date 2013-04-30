@@ -1,9 +1,11 @@
 package conscript
 
+import java.io.{FileInputStream, FileOutputStream }
+import java.util.Properties
+import language.reflectiveCalls
+
 object Config extends Launch {
-  import java.io.{ File, FileInputStream, FileOutputStream }
-  import java.util.Properties
-  
+
   val file = configdir("config")
 
   def get(name: String) =

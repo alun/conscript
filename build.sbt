@@ -4,15 +4,15 @@ seq(lsSettings :_*)
 
 organization := "net.databinder.conscript"
 
-version := "0.4.2"
+version := "1.0.0-SNAPSHOT"
 
 name := "conscript"
 
-scalaVersion := "2.9.2"
+scalaVersion := "2.10.1"
 
 libraryDependencies <<= (libraryDependencies, scalaVersion) {
   (deps, sv) => deps ++ Seq(
-    "net.databinder.dispatch" %% "dispatch-core" % "0.9.5",
+    "net.databinder.dispatch" %% "dispatch-core" % "0.10.0",
     "com.github.scopt" %% "scopt" % "2.1.0",
     "org.scala-lang" % "scala-swing" % sv,
     "net.liftweb" %% "lift-json" % "2.5-M4",
@@ -73,5 +73,10 @@ pomExtra := (
       <id>eed3si9n</id>
       <name>Eugene Yokota</name>
       <url>https://github.com/eed3si9n</url>
+    </developer>
+    <developer>
+      <id>alun</id>
+      <name>Alexey Lunacharsky</name>
+      <url>https://github.com/alun</url>
     </developer>
   </developers>)

@@ -1,6 +1,7 @@
 package conscript
 
 import dispatch._
+import Defaults._
 import net.liftweb.json._
 import net.liftweb.json.JsonDSL._
 
@@ -18,9 +19,8 @@ object Authorize {
                      .setScheme(AuthScheme.BASIC)
                      .build())
 
-  import Conscript.http
-  def apply(user: String, pass: String): Promise[Either[String, String]] =
-    http(
+  def apply(user: String, pass: String): Future[Either[String, String]] =
+    Http(
         as_!(auths, user, pass).setBody(compact(render(
           ("note" -> "Conscript") ~
           ("note_url" -> "https://github.com/n8han/conscript") ~
@@ -30,11 +30,15 @@ object Authorize {
       case StatusCode(401) => "Unrecognized github login and password"
       case e => "Unexpected error: " + e.getMessage
     }.map { _.right.flatMap { js =>
-      (for (JField("token", JString(token)) <- js) yield {
-        Config.properties {
-          _.setProperty("gh.access", token)
+      val authorizations:List[String] =
+        for {
+          JField("token", JString(token)) <- js
+        } yield {
+          Config.properties {
+            _.setProperty("gh.access", token)
+          }
+          "Authorization stored"
         }
-        "Authorization stored"
-      }).headOption.toRight("JSON parsing error")
+      authorizations.headOption.toRight("JSON parsing error")
     } }
 }

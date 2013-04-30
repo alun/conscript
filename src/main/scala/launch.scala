@@ -1,12 +1,12 @@
 package conscript
 
 import dispatch._
-import java.io.{FileOutputStream, File}
+import Defaults._
+import java.io.File
 import util.control.Exception._
+import language.implicitConversions
 
 trait Launch extends Credentials {
-  import Conscript.http
-
   val sbtversion = "0.12.2"
   val sbtlaunchalias = "sbt-launch.jar"
 
@@ -22,13 +22,13 @@ trait Launch extends Credentials {
 
         val req = url("http://typesafe.artifactoryonline.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/%s/sbt-launch.jar" format sbtversion)
 
-        http(req > As.file(jar))()
+        enrichFuture(Http(req > as.File(jar)))()
         windows map { _ =>
           if (launchalias.exists) launchalias.delete
           else ()
           // should copy the one we already downloaded, but I don't
           // have a windows box to test any changes
-          http(req > As.file(launchalias))
+          Http(req > as.File(launchalias))
         } getOrElse {
           val rt = Runtime.getRuntime
           rt.exec("ln -sf %s %s" format (jar, launchalias)).waitFor
@@ -42,7 +42,7 @@ trait Launch extends Credentials {
       }
   }
 
-  implicit def str2paths(a: String) = new {
+  implicit class StrPathBuilder(a: String) {
     def / (b: String) = a + File.separatorChar + b
   }
   def forceslash(a: String) =

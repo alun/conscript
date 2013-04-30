@@ -1,11 +1,11 @@
 package conscript
 
 import scala.util.control.Exception.allCatch
+import dispatch._
+import Defaults._
 
 object Conscript {
-  import dispatch._
   import Apply.exec
-  val http = dispatch.Http
 
   case class Config(project: String = "",
                     branch: Option[String] = None,
@@ -99,11 +99,11 @@ object Conscript {
       case _ => Left(parser.usage)
     }.getOrElse { Left(parser.usage) }.fold( { err =>
       display.error(err)
-      http.shutdown
+      Http.shutdown
       1
     }, { msg =>
       display.info(msg)
-      http.shutdown
+      Http.shutdown
       0
     })
   }
@@ -128,7 +128,7 @@ object Conscript {
                 shouldExec: Boolean,
                 branch: Option[String] = None,
                 configoverrides: Seq[ConfigEntry] = Nil) =
-    Github.lookup(user, repo, branch).map { result =>
+    enrichFuture(Github.lookup(user, repo, branch).map { result =>
       result.right.flatMap { scripts =>
         ((Right(""): Either[String,String]) /: scripts) {
           case (either, (name, launch)) =>
@@ -140,7 +140,7 @@ object Conscript {
             }
           }
       }
-    }()
+    })()
   val GhProject = "([^/]+)/([^/]+)(/[^/]+)?".r
 }
 
